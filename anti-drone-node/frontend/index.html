@@ -1,12 +1,81 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Anti-Drone Sensor Node — Dashboard</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anti-Drone Tactical Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <!-- Load Socket.io Client from CDN (No setup required!) -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+  <div class="dashboard-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="icon">✇</span> TACTICAL SENSOR NODE
+      </div>
+      <div class="system-status">
+        <span class="status-indicator" id="connection-indicator"></span>
+        <span id="system-status-text">OFFLINE</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Left Panel: Radar -->
+      <section class="radar-section panel glass">
+        <div class="radar-container">
+          <div class="radar" id="radar-ui">
+            <div class="sweep"></div>
+            <!-- Target Dot -->
+            <div class="target hidden" id="radar-target"></div>
+            <div class="rings">
+              <div class="ring"></div>
+              <div class="ring"></div>
+              <div class="ring"></div>
+              <div class="ring"></div>
+            </div>
+            <div class="crosshair"></div>
+          </div>
+        </div>
+        <div class="radar-footer">
+          <span>AZIMUTH: 360°</span>
+          <span>RANGE: 1000m</span>
+        </div>
+      </section>
+
+      <!-- Right Panel: Controls & Telemetry -->
+      <section class="control-section">
+        <!-- Threat Alert Box -->
+        <div class="threat-alert panel glass" id="threat-panel">
+          <h2 id="threat-title">SCANNING AIRSPACE</h2>
+          <div class="telemetry">
+            <div class="data-group">
+              <label>SIGNAL STRENGTH (RSSI)</label>
+              <div class="value" id="rssi-value">-- dBm</div>
+            </div>
+            <div class="data-group">
+              <label>NODE STATE</label>
+              <div class="value" id="node-state-value">UNKNOWN</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions Box -->
+        <div class="actions panel glass">
+          <h2>WEAPONS CONTROL</h2>
+          <p>Execute Electronic Warfare Countermeasures (RF Flood).</p>
+          <div class="buttons">
+            <button id="btn-jam" class="btn btn-danger">ENGAGE JAMMER</button>
+            <button id="btn-standby" class="btn btn-secondary">STANDBY (SCAN)</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
 </html>
