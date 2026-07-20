@@ -1,151 +1,95 @@
-/**
- * ============================================================================
- *  ANTI-DRONE SENSOR NODE — BACKEND BRIDGE
- * ============================================================================
- *  Responsibilities:
- *    1. Open the USB serial connection to the ESP32.
- *    2. Parse newline-delimited JSON telemetry lines coming from the ESP32
- *       and re-broadcast them to all connected dashboard clients via
- *       Socket.IO (event: "telemetry").
- *    3. Expose a REST endpoint (POST /api/command) the dashboard uses to
- *       send commands (ENGAGE_JAMMER / STANDBY) back down to the ESP32.
- *    4. Auto-reconnect to the serial port if the ESP32 is unplugged/replugged,
- *       instead of crashing the whole backend.
- * ============================================================================
- */
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
 
-require("dotenv").config();
-
-const express = require("express");
-const cors = require("cors");
-const http = require("http");
-const { Server } = require("socket.io");
-const { SerialPort } = require("serialport");
-const { ReadlineParser } = require("@serialport/parser-readline");
-
-const PORT = process.env.PORT || 4000;
-const SERIAL_PORT_NAME = process.env.SERIAL_PORT || "COM5";
-const BAUD_RATE = parseInt(process.env.BAUD_RATE || "115200", 10);
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "http://localhost:5173";
-const SERIAL_RECONNECT_DELAY_MS = 3000;
-
-// ----------------------------------------------------------------------------
-// Express + Socket.IO setup
-// ----------------------------------------------------------------------------
 const app = express();
-app.use(cors({ origin: CORS_ORIGIN }));
-app.use(express.json());
-
-const httpServer = http.createServer(app);
-const io = new Server(httpServer, {
-  cors: { origin: CORS_ORIGIN, methods: ["GET", "POST"] },
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST']
+  }
 });
 
-// Keep the most recent telemetry snapshot so newly-connected dashboards
-// get an immediate state instead of waiting up to 100ms for the next line.
-let lastTelemetry = {
-  status: "DISCONNECTED",
-  energy_level: 0,
-  threat_detected: false,
-};
+const PORT = 3000;
 
-io.on("connection", (socket) => {
-  console.log(`[socket.io] dashboard connected: ${socket.id}`);
-  socket.emit("telemetry", lastTelemetry);
+// === IMPORTANT: SET YOUR COM PORT HERE ===
+// Examples: 'COM3' (Windows), '/dev/ttyUSB0' (Linux/Mac)
+// Make sure this matches the port your Node 2 ESP32 is connected to
+const SERIAL_PORT_PATH = 'COM3'; 
+const BAUD_RATE = 115200;
 
-  socket.on("disconnect", () => {
-    console.log(`[socket.io] dashboard disconnected: ${socket.id}`);
-  });
-});
-
-// ----------------------------------------------------------------------------
-// Serial connection to the ESP32 (with auto-reconnect)
-// ----------------------------------------------------------------------------
-let serialPort = null;
+let port;
+let parser;
 
 function connectSerial() {
-  serialPort = new SerialPort(
-    { path: SERIAL_PORT_NAME, baudRate: BAUD_RATE },
-    (err) => {
-      if (err) {
-        console.error(`[serial] failed to open ${SERIAL_PORT_NAME}: ${err.message}`);
-        scheduleReconnect();
-      }
+  console.log(`[Serial] Attempting to connect to ${SERIAL_PORT_PATH}...`);
+  
+  port = new SerialPort({ path: SERIAL_PORT_PATH, baudRate: BAUD_RATE }, (err) => {
+    if (err) {
+      console.error(`[Serial] Error opening port: ${err.message}`);
+      console.log('[Serial] Is the ESP32 connected? Waiting 5 seconds before retrying...');
+      setTimeout(connectSerial, 5000);
     }
-  );
-
-  const parser = serialPort.pipe(new ReadlineParser({ delimiter: "\n" }));
-
-  serialPort.on("open", () => {
-    console.log(`[serial] connected to ESP32 on ${SERIAL_PORT_NAME} @ ${BAUD_RATE} baud`);
   });
 
-  parser.on("data", (line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
+  parser = port.pipe(new ReadlineParser({ delimiter: '\n' }));
 
+  port.on('open', () => {
+    console.log(`[Serial] Successfully opened ${SERIAL_PORT_PATH}`);
+  });
+
+  // Read data from ESP32 Node 2
+  parser.on('data', (data) => {
     try {
-      const telemetry = JSON.parse(trimmed);
-      lastTelemetry = telemetry;
-      io.emit("telemetry", telemetry);
+      const parsedData = JSON.parse(data.trim());
+      // Broadcast telemetry to all connected frontend clients (the dashboard)
+      io.emit('telemetry', parsedData);
     } catch (e) {
-      // Non-JSON noise (e.g. boot logs) — ignore rather than crash the bridge
-      console.warn(`[serial] ignored non-JSON line: ${trimmed}`);
+      // Ignored non-JSON debug strings that ESP32 might send
+      console.log(`[Serial] Raw data received: ${data.trim()}`);
     }
   });
 
-  serialPort.on("error", (err) => {
-    console.error(`[serial] error: ${err.message}`);
+  port.on('close', () => {
+    console.log('[Serial] Port closed. Reconnecting in 5 seconds...');
+    setTimeout(connectSerial, 5000);
   });
-
-  serialPort.on("close", () => {
-    console.warn("[serial] port closed — will attempt to reconnect");
-    lastTelemetry = { status: "DISCONNECTED", energy_level: 0, threat_detected: false };
-    io.emit("telemetry", lastTelemetry);
-    scheduleReconnect();
-  });
-}
-
-function scheduleReconnect() {
-  setTimeout(connectSerial, SERIAL_RECONNECT_DELAY_MS);
 }
 
 connectSerial();
 
-// ----------------------------------------------------------------------------
-// REST endpoint: dashboard -> ESP32 commands
-// ----------------------------------------------------------------------------
-app.post("/api/command", (req, res) => {
-  const { command } = req.body;
+// Handle WebSocket connections from the Frontend Dashboard
+io.on('connection', (socket) => {
+  console.log(`[WebSocket] Dashboard Client connected: ${socket.id}`);
 
-  const allowedCommands = ["ENGAGE_JAMMER", "STANDBY"];
-  if (!allowedCommands.includes(command)) {
-    return res.status(400).json({ error: `Invalid command. Allowed: ${allowedCommands.join(", ")}` });
-  }
-
-  if (!serialPort || !serialPort.isOpen) {
-    return res.status(503).json({ error: "ESP32 serial port is not connected" });
-  }
-
-  const payload = JSON.stringify({ command }) + "\n";
-  serialPort.write(payload, (err) => {
-    if (err) {
-      console.error(`[serial] write failed: ${err.message}`);
-      return res.status(500).json({ error: "Failed to write to serial port" });
+  // Receive commands from Frontend and send to ESP32
+  socket.on('command', (cmd) => {
+    console.log(`[WebSocket] Received command from UI: ${cmd}`);
+    if (port && port.isOpen) {
+      // Format must match what Node 2 expects: {"command": "ENGAGE_JAMMER"}
+      const payload = JSON.stringify({ command: cmd }) + '\n';
+      port.write(payload, (err) => {
+        if (err) {
+          console.error('[Serial] Error writing command to ESP32:', err.message);
+        } else {
+          console.log(`[Serial] Command Sent to ESP32: ${payload.trim()}`);
+        }
+      });
+    } else {
+      console.log('[Serial] Cannot send command, port is not open.');
     }
-    console.log(`[serial] -> ESP32: ${payload.trim()}`);
-    res.json({ success: true, sent: command });
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`[WebSocket] Dashboard Client disconnected: ${socket.id}`);
   });
 });
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    serialConnected: !!(serialPort && serialPort.isOpen),
-    serialPortName: SERIAL_PORT_NAME,
-    lastTelemetry,
-  });
-});
-
-httpServer.listen(PORT, () => {
-  console.log(`[backend] listening on http://localhost:${PORT}`);
+server.listen(PORT, () => {
+  console.log(`\n======================================================`);
+  console.log(`🚀 Anti-Drone Backend running on http://localhost:${PORT}`);
+  console.log(`======================================================\n`);
 });

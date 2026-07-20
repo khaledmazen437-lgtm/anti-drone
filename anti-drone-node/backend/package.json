@@ -1,22 +1,14 @@
 {
   "name": "anti-drone-backend",
   "version": "1.0.0",
-  "description": "Serial <-> WebSocket bridge for the Anti-Drone Sensor Node (ITC-Egypt)",
+  "description": "Backend for Anti-Drone Radar Dashboard",
   "main": "server.js",
-  "type": "commonjs",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "@serialport/parser-readline": "^12.0.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "express": "^4.19.0",
     "serialport": "^12.0.0",
-    "socket.io": "^4.7.5"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.4"
+    "socket.io": "^4.7.0"
   }
 }
