@@ -17,8 +17,8 @@ const PORT = 3000;
 
 // === IMPORTANT: SET YOUR COM PORT HERE ===
 // Examples: 'COM3' (Windows), '/dev/ttyUSB0' (Linux/Mac)
-// Make sure this matches the port your Node 2 ESP32 is connected to
-const SERIAL_PORT_PATH = 'COM3'; 
+
+const SERIAL_PORT_PATH = 'COM3';
 const BAUD_RATE = 115200;
 
 let port;
@@ -26,7 +26,7 @@ let parser;
 
 function connectSerial() {
   console.log(`[Serial] Attempting to connect to ${SERIAL_PORT_PATH}...`);
-  
+
   port = new SerialPort({ path: SERIAL_PORT_PATH, baudRate: BAUD_RATE }, (err) => {
     if (err) {
       console.error(`[Serial] Error opening port: ${err.message}`);
@@ -61,7 +61,6 @@ function connectSerial() {
 
 connectSerial();
 
-// Handle WebSocket connections from the Frontend Dashboard
 io.on('connection', (socket) => {
   console.log(`[WebSocket] Dashboard Client connected: ${socket.id}`);
 
@@ -69,7 +68,7 @@ io.on('connection', (socket) => {
   socket.on('command', (cmd) => {
     console.log(`[WebSocket] Received command from UI: ${cmd}`);
     if (port && port.isOpen) {
-      // Format must match what Node 2 expects: {"command": "ENGAGE_JAMMER"}
+
       const payload = JSON.stringify({ command: cmd }) + '\n';
       port.write(payload, (err) => {
         if (err) {

@@ -1,6 +1,6 @@
 /*
  * Node 1: Target Drone Simulator (The Threat)
- * 
+ *
  * Hardware: ESP32 + SX1278 LoRa Module
  * Goal: Simulates an invading drone broadcasting telemetry.
  * Action: Continuously transmit a dummy LoRa packet every 50 milliseconds.
@@ -23,18 +23,16 @@
 #define LORA_DIO0 26
 
 unsigned long previousMillis = 0;
-const long transmitInterval = 50; // 50 milliseconds interval
+const long transmitInterval = 50;
 
 void setup() {
   Serial.begin(115200);
-  
-  // Wait briefly for serial connection but do not block indefinitely
+
   unsigned long startWait = millis();
   while (!Serial && millis() - startWait < 3000) { }
 
   Serial.println("Starting Node 1: Target Drone Simulator");
 
-  // Configure SPI pins
   LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
 
   // Initialize LoRa at 915 MHz (Adjust to 433E6 or 866E6 based on local regulations)
