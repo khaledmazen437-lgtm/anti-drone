@@ -19,7 +19,7 @@ body {
   background-color: var(--color-bg);
   color: #fff;
   font-family: var(--font-main);
-  background-image: 
+  background-image:
     radial-gradient(circle at 50% 50%, rgba(0, 255, 170, 0.05) 0%, transparent 60%),
     linear-gradient(rgba(0,0,0,0.8), rgba(0,0,0,0.8));
   min-height: 100vh;
@@ -37,7 +37,6 @@ body {
   gap: 20px;
 }
 
-/* Glassmorphism Panel Base */
 .glass {
   background: var(--color-glass);
   backdrop-filter: blur(10px);
@@ -46,7 +45,6 @@ body {
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
 }
 
-/* Header */
 .header {
   display: flex;
   justify-content: space-between;
@@ -78,7 +76,7 @@ body {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background-color: #555; /* Default offline */
+  background-color: #555;
   box-shadow: 0 0 10px #555;
 }
 
@@ -87,7 +85,6 @@ body {
   box-shadow: 0 0 15px var(--color-primary-glow);
 }
 
-/* Main Layout */
 .main-content {
   display: flex;
   gap: 20px;
@@ -134,7 +131,6 @@ body {
   transition: all 0.3s ease;
 }
 
-/* Red Radar Mode */
 .radar.alert-mode {
   border-color: var(--color-danger);
   background: radial-gradient(circle, rgba(255,51,51,0.15) 0%, rgba(0,0,0,0) 70%);
@@ -246,7 +242,6 @@ body {
   letter-spacing: 2px;
 }
 
-/* Control Section Panels */
 .panel {
   padding: 25px;
 }
@@ -299,7 +294,6 @@ body {
   text-shadow: 0 0 10px rgba(255,255,255,0.3);
 }
 
-/* Actions Panel */
 .actions {
   display: flex;
   flex-direction: column;
